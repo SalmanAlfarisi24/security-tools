@@ -3,9 +3,9 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-# ==========================================
+# =========================================
 # KONFIGURASI DEFAULT
-# ==========================================
+# =========================================
 COMMON_PORTS = {
     20: 'FTP-data',
     21: 'FTP',

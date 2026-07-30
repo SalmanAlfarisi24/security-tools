@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 # ==========================================
 # WORDLIST DEFAULT (SAMPLE)
-# ==========================================
+# =========================================
 DEFAULT_WORDLIST = [
     'password', '123456', 'admin', 'root', 'toor',
     'admin123', 'password123', '12345', 'qwerty',

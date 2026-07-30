@@ -5,9 +5,9 @@ import os
 import platform
 from concurrent.futures import ThreadPoolExecutor
 
-# ==========================================
+# =========================================
 # DETEKSI OS
-# ==========================================
+# =========================================
 IS_WINDOWS = platform.system() == 'Windows'
 IS_LINUX = platform.system() == 'Linux'
 IS_MAC = platform.system() == 'Darwin'

@@ -3,9 +3,9 @@ import socket
 import requests
 from concurrent.futures import ThreadPoolExecutor
 
-# ==========================================
+# =========================================
 # WORDLIST DEFAULT
-# ==========================================
+# =========================================
 DEFAULT_WORDLIST = [
     'www', 'mail', 'ftp', 'admin', 'dev', 'test', 'api',
     'blog', 'shop', 'forum', 'support', 'portal', 'app',

@@ -6,7 +6,7 @@ from email_validator import validate_email as lib_validate
 
 # ==========================================
 # FUNGSI BANTUAN
-# ==========================================
+# =========================================
 def is_valid_format(email):
     """
     Cek format email menggunakan regex.

@@ -20,9 +20,9 @@ DEFAULT_WORDLIST = [
     '2023', '2024', '2025', 'archive', 'old'
 ]
 
-# ==========================================
+# =========================================
 # FUNGSI BANTUAN
-# ==========================================
+# =========================================
 def check_directory(url, path, timeout=3):
     """
     Cek apakah direktori/file ada di server.
