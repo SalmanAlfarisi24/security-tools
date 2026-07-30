@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Analyzer // SEC-OPS</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        
+        <!-- BACK NAVIGATION -->
+        <a href="/" class="back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Kembali ke Command Center
+        </a>
+
+        <!-- HEADER -->
+        <div class="header">
+            <h1>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                Log Analyzer
+            </h1>
+            <p>Analisis log server (Apache, Nginx, Syslog) untuk deteksi pola serangan web (SQLi, XSS, LFI/RFI) dan anomali lalu lintas.</p>
+        </div>
+
+        <!-- FORM INPUT -->
+        <div class="form-box">
+            <form method="POST">
+                <div style="margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label for="log_content" style="margin-bottom: 0;">Raw Log Data (Apache / Nginx Access Log Format)</label>
+                        <span style="color: var(--text-muted); font-size: 0.75rem;">Mendukung hingga 1,000 baris</span>
+                    </div>
+                    <textarea id="log_content" name="log_content" rows="8" placeholder="Paste data log server di sini...
+Contoh:
+192.168.1.50 - - [10/May/2026:13:55:01 +0000] &quot;GET /admin/login.php HTTP/1.1&quot; 200 4523
+10.0.0.12 - - [10/May/2026:13:55:10 +0000] &quot;GET /products.php?id=1%20OR%201=1 HTTP/1.1&quot; 500 1250
+172.16.0.4 - - [10/May/2026:13:56:22 +0000] &quot;GET /../../etc/passwd HTTP/1.1&quot; 403 280" required style="font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.5;">{{ log_content or '' }}</textarea>
+                </div>
+
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <button type="submit" class="btn" style="flex: 1;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="m21 21-4.3-4.3"/>
+                        </svg>
+                        Analisasi Baris Log
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ERROR ALERT -->
+        {% if error %}
+        <div class="error">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>{{ error }}</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- HASIL ANALISIS -->
+        {% if results is not none %}
+        <!-- STATISTIK SUMMARY -->
+        <div class="stats">
+            <span>BARIS DITELITI: <strong>{{ stats.total_lines }}</strong></span>
+            <span>IP UNIK: <strong>{{ stats.unique_ips }}</strong></span>
+            <span>SUSPICIOUS THREATS: <strong style="color: {% if stats.threats > 0 %}var(--status-danger){% else %}var(--status-success){% endif %};">{{ stats.threats }}</strong></span>
+            <span>HTTP ERROR 4xx/5xx: <strong style="color: var(--status-warning);">{{ stats.errors }}</strong></span>
+        </div>
+
+        <!-- RINGKASAN ANCAMAN TERDETEKSI -->
+        {% if stats.threat_types %}
+        <div style="margin-bottom: 20px; background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 16px; border-radius: var(--radius-sm);">
+            <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em;">
+                Ringkasan Vektor Serangan Terdeteksi
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                {% for threat, count in stats.threat_types.items() %}
+                <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: var(--status-danger); padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; font-family: var(--font-mono); font-weight: 600;">
+                    {{ threat }}: {{ count }} Event
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- TABEL ANALISIS LOG -->
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>IP Origin</th>
+                        <th style="width: 160px;">Timestamp</th>
+                        <th style="width: 80px;">Method</th>
+                        <th>Request Payload / Endpoint</th>
+                        <th style="width: 80px;">Status</th>
+                        <th style="width: 140px;">Threat Classification</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if results %}
+                        {% for log in results %}
+                        <tr style="{% if log.is_suspicious %}background-color: rgba(239, 68, 68, 0.04);{% endif %}">
+                            <td style="font-family: var(--font-mono); color: var(--text-muted);">{{ "%02d" % loop.index }}</td>
+                            <td class="ip">{{ log.ip }}</td>
+                            <td style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary);">
+                                {{ log.timestamp or '-' }}
+                            </td>
+                            <td style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-cyan);">
+                                {{ log.method or 'GET' }}
+                            </td>
+                            <td class="found" style="word-break: break-all; font-size: 0.82rem;">
+                                {{ log.request_path }}
+                            </td>
+                            <td style="font-family: var(--font-mono);">
+                                {% if log.status_code >= 200 and log.status_code < 300 %}
+                                <span style="color: var(--status-success); font-weight: 600;">{{ log.status_code }}</span>
+                                {% elif log.status_code >= 400 and log.status_code < 500 %}
+                                <span style="color: var(--status-warning); font-weight: 600;">{{ log.status_code }}</span>
+                                {% elif log.status_code >= 500 %}
+                                <span style="color: var(--status-danger); font-weight: 600;">{{ log.status_code }}</span>
+                                {% else %}
+                                <span style="color: var(--text-muted);">{{ log.status_code or '-' }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.is_suspicious %}
+                                <span class="status-inactive">
+                                    <span style="display: inline-block; width: 6px; height: 6px; background-color: var(--status-danger); border-radius: 50%;"></span>
+                                    {{ log.threat_category or 'SUSPICIOUS' }}
+                                </span>
+                                {% else %}
+                                <span class="status-active">
+                                    <span style="display: inline-block; width: 6px; height: 6px; background-color: var(--status-success); border-radius: 50%;"></span>
+                                    CLEAN
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="no-result">
+                                Tidak ada data log yang berhasil di-parse. Pastikan format teks sesuai dengan format access log standar.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        {% endif %}
+
+    </div>
+</body>
+</html>
