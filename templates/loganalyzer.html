@@ -79,7 +79,13 @@ Contoh:
         <div class="stats">
             <span>BARIS DITELITI: <strong>{{ stats.total_lines }}</strong></span>
             <span>IP UNIK: <strong>{{ stats.unique_ips }}</strong></span>
-            <span>SUSPICIOUS THREATS: <strong style="color: {% if stats.threats > 0 %}var(--status-danger){% else %}var(--status-success){% endif %};">{{ stats.threats }}</strong></span>
+            <span>SUSPICIOUS THREATS: 
+                {% if stats.threats > 0 %}
+                    <strong style="color: var(--status-danger);">{{ stats.threats }}</strong>
+                {% else %}
+                    <strong style="color: var(--status-success);">{{ stats.threats }}</strong>
+                {% endif %}
+            </span>
             <span>HTTP ERROR 4xx/5xx: <strong style="color: var(--status-warning);">{{ stats.errors }}</strong></span>
         </div>
 
@@ -116,7 +122,11 @@ Contoh:
                 <tbody>
                     {% if results %}
                         {% for log in results %}
-                        <tr style="{% if log.is_suspicious %}background-color: rgba(239, 68, 68, 0.04);{% endif %}">
+                        {% if log.is_suspicious %}
+                        <tr style="background-color: rgba(239, 68, 68, 0.04);">
+                        {% else %}
+                        <tr>
+                        {% endif %}
                             <td style="font-family: var(--font-mono); color: var(--text-muted);">{{ "%02d" % loop.index }}</td>
                             <td class="ip">{{ log.ip }}</td>
                             <td style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary);">

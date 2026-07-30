@@ -112,10 +112,13 @@
                                 <div style="display: flex; align-items: center; gap: 10px;">
                                     <span style="font-family: var(--font-mono); font-size: 0.8rem; width: 36px; text-align: right;">{{ item.signal }}%</span>
                                     <div style="flex: 1; height: 6px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; overflow: hidden;">
-                                        <div style="width: {{ item.signal }}%; height: 100%; background: 
-                                            {% if item.signal >= 70 %}var(--status-success)
-                                            {% elif item.signal >= 40 %}var(--status-warning)
-                                            {% else %}var(--status-danger){% endif %}; transition: width 0.3s;"></div>
+                                        {% if item.signal >= 70 %}
+                                            <div style="width: {{ item.signal }}%; height: 100%; background: var(--status-success); transition: width 0.3s;"></div>
+                                        {% elif item.signal >= 40 %}
+                                            <div style="width: {{ item.signal }}%; height: 100%; background: var(--status-warning); transition: width 0.3s;"></div>
+                                        {% else %}
+                                            <div style="width: {{ item.signal }}%; height: 100%; background: var(--status-danger); transition: width 0.3s;"></div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </td>
