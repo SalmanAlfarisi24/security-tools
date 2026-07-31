@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Directory Brute // SEC-OPS</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        
+        <!-- BACK NAVIGATION -->
+        <a href="/" class="back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Kembali ke Command Center
+        </a>
+
+        <!-- HEADER -->
+        <div class="header">
+            <h1>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+                Directory Brute
+            </h1>
+            <p>Pencarian direktori tersembunyi dan endpoint sensitif pada aplikasi web melalui metode HTTP Fuzzing.</p>
+        </div>
+
+        <!-- FORM INPUT -->
+        <div class="form-box">
+            <form method="POST">
+                <div style="margin-bottom: 16px;">
+                    <label for="url">URL Target Web</label>
+                    <input type="text" id="url" name="url" placeholder="contoh: https://example.com" value="{{ url or '' }}" required style="font-family: var(--font-mono);">
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label for="wordlist">Custom Wordlist Path (Opsional)</label>
+                    <textarea id="wordlist" name="wordlist" rows="3" placeholder="Masukkan daftar path dipisahkan koma (contoh: admin, login, dashboard, api, backup)...">{{ request.form.get('wordlist', '') }}</textarea>
+                    <span style="color: var(--text-muted); font-size: 0.75rem;">
+                        *Biarkan kosong untuk menggunakan daftar path bawaan (50+ endpoint umum).
+                    </span>
+                </div>
+
+                <button type="submit" class="btn" style="width: 100%;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.3-4.3"/>
+                    </svg>
+                    Mulai Enumerasi Direktori
+                </button>
+            </form>
+        </div>
+
+        <!-- ERROR ALERT -->
+        {% if error %}
+        <div class="error">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>{{ error }}</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- HASIL SCANNING -->
+        {% if results is not none %}
+        <!-- STATISTIK SUMMARY -->
+        <div class="stats">
+            <span>TARGET URL: <strong>{{ url }}</strong></span>
+            <span>TOTAL DICOBA: <strong>{{ total }}</strong></span>
+            <span>DITEMUKAN: <strong style="color: var(--status-success);">{{ found }}</strong></span>
+            <span>DURASI: <strong>{{ elapsed }}s</strong></span>
+        </div>
+
+        <!-- TABEL HASIL -->
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>Path Endpoint</th>
+                        <th style="width: 150px;">HTTP Status</th>
+                        <th style="width: 120px;">Size</th>
+                        <th>Page Title</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if results %}
+                        {% for item in results %}
+                        <tr>
+                            <td style="font-family: var(--font-mono); color: var(--text-muted);">{{ "%02d" % loop.index }}</td>
+                            <td class="found">
+                                <a href="{{ item.url }}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: none;">
+                                    /{{ item.path }}
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 4px; opacity: 0.6;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                </a>
+                            </td>
+                            <td>
+                                {% if item.status_code >= 200 and item.status_code < 300 %}
+                                <span class="status-active">
+                                    <span style="display: inline-block; width: 6px; height: 6px; background-color: var(--status-success); border-radius: 50%;"></span>
+                                    {{ item.status_code }} OK
+                                </span>
+                                {% elif item.status_code >= 300 and item.status_code < 400 %}
+                                <span class="status-unknown">
+                                    <span style="display: inline-block; width: 6px; height: 6px; background-color: var(--status-warning); border-radius: 50%;"></span>
+                                    {{ item.status_code }} REDIRECT
+                                </span>
+                                {% else %}
+                                <span class="status-inactive">
+                                    <span style="display: inline-block; width: 6px; height: 6px; background-color: var(--status-danger); border-radius: 50%;"></span>
+                                    {{ item.status_code }}
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="ip">{{ item.content_length }} B</td>
+                            <td style="color: var(--text-secondary); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                {{ item.title or '-' }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="no-result">
+                                Tidak ada direktori atau file yang ditemukan berdasarkan wordlist ini.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if found == 0 %}
+        <div style="background: var(--status-warning-bg); border: 1px solid rgba(245, 158, 11, 0.2); padding: 14px 18px; border-radius: var(--radius-sm); color: var(--status-warning); font-size: 0.85rem; display: flex; align-items: center; gap: 10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span><strong>Tip:</strong> Target mungkin menggunakan Web Application Firewall (WAF) atau pemblokiran pola request. Cobalah memasukkan wordlist custom yang lebih spesifik.</span>
+        </div>
+        {% endif %}
+
+        {% endif %}
+
+    </div>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hash Generator // SEC-OPS</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        
+        <!-- BACK NAVIGATION -->
+        <a href="/" class="back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Kembali ke Command Center
+        </a>
+
+        <!-- HEADER -->
+        <div class="header">
+            <h1>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2">
+                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                </svg>
+                Multi-Algorithm Hash Engine
+            </h1>
+            <p>Generasi hash instan dan enkoding dari string teks biasa atau berkas file menggunakan MD5, SHA-1, SHA-256, SHA-512, bcrypt, atau Base64.</p>
+        </div>
+
+        <!-- FORM INPUT -->
+        <div class="form-box">
+            <form method="POST" enctype="multipart/form-data">
+                
+                <!-- MODE SELECTOR -->
+                <div style="margin-bottom: 16px;">
+                    <label for="mode">Input Source Mode</label>
+                    <select id="mode" name="mode" onchange="toggleMode()" style="font-family: var(--font-mono);">
+                        <option value="text" {% if not mode or mode == 'text' %}selected{% endif %}>String Text Input</option>
+                        <option value="file" {% if mode == 'file' %}selected{% endif %}>Binary File Stream</option>
+                    </select>
+                </div>
+
+                <!-- TEXT INPUT MODE -->
+                <div id="text-mode" style="margin-bottom: 16px; display: {% if mode == 'file' %}none{% else %}block{% endif %};">
+                    <label for="text">String / Plaintext Target</label>
+                    <input type="text" id="text" name="text" placeholder="Masukkan teks yang ingin di-hash..." value="{{ result.input if result and mode == 'text' else '' }}" style="font-family: var(--font-mono);">
+                </div>
+
+                <!-- FILE INPUT MODE -->
+                <div id="file-mode" style="margin-bottom: 16px; display: {% if mode == 'file' %}block{% else %}none{% endif %};">
+                    <label for="file">Pilih Berkas File</label>
+                    <input type="file" id="file" name="file" style="font-family: var(--font-mono); background: rgba(0,0,0,0.2); padding: 8px; border: 1px solid var(--border-subtle); border-radius: 6px; width: 100%; color: var(--text-primary);">
+                </div>
+
+                <!-- ALGORITHM SELECTOR -->
+                <div style="margin-bottom: 20px;">
+                    <label for="algorithm">Algoritma Hashing / Encoding</label>
+                    <select id="algorithm" name="algorithm" style="font-family: var(--font-mono);">
+                        <option value="md5" {% if algorithm == 'md5' %}selected{% endif %}>MD5 (128-bit)</option>
+                        <option value="sha1" {% if algorithm == 'sha1' %}selected{% endif %}>SHA-1 (160-bit)</option>
+                        <option value="sha256" {% if not algorithm or algorithm == 'sha256' %}selected{% endif %}>SHA-256 (256-bit)</option>
+                        <option value="sha512" {% if algorithm == 'sha512' %}selected{% endif %}>SHA-512 (512-bit)</option>
+                        <option value="bcrypt" {% if algorithm == 'bcrypt' %}selected{% endif %}>bcrypt (Key Derivation Function)</option>
+                        <option value="base64" {% if algorithm == 'base64' %}selected{% endif %}>Base64 (Data Encoding)</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn" style="width: 100%;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                    </svg>
+                    Generate Cryptographic Hash
+                </button>
+            </form>
+        </div>
+
+        <!-- ERROR ALERT -->
+        {% if error or (result is mapping and result.error) %}
+        <div class="error">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>{{ error or result.error }}</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- HASIL HASH -->
+        {% if result and 'error' not in result %}
+        
+        <!-- STATISTIK SUMMARY -->
+        <div class="stats" style="flex-wrap: wrap; gap: 15px;">
+            <span>MODE: <strong style="font-family: var(--font-mono); color: var(--accent-cyan);">{{ (mode or 'TEXT')|upper }}</strong></span>
+            <span>ALGORITHM: <strong style="font-family: var(--font-mono); color: var(--accent-emerald);">{{ (algorithm or 'SHA256')|upper }}</strong></span>
+            {% if mode == 'file' and result.file %}
+            <span>FILE: <strong style="font-family: var(--font-mono); color: var(--text-primary);">{{ result.file }}</strong></span>
+            <span>SIZE: <strong style="font-family: var(--font-mono); color: var(--text-muted);">{{ result.size }} bytes</strong></span>
+            {% endif %}
+        </div>
+
+        <!-- GENERATED HASH DISPLAY CARD -->
+        <div style="margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 18px; border-radius: var(--radius-sm);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-cyan); font-size: 0.95rem;">[GENERATED HASH OUTPUT]</span>
+                <span class="status-active" style="font-size: 0.75rem;">
+                    <span style="display: inline-block; width: 6px; height: 6px; background-color: var(--status-success); border-radius: 50%;"></span>
+                    READY
+                </span>
+            </div>
+
+            <!-- HASH STRING BOX -->
+            <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(56, 189, 248, 0.2); padding: 16px; border-radius: 6px; font-family: var(--font-mono); font-size: 1rem; color: var(--accent-cyan); word-break: break-all; margin-bottom: 14px;">
+                {{ result.hash }}
+            </div>
+
+            {% if mode == 'text' and result.input %}
+            <div style="font-family: var(--font-mono); font-size: 0.82rem; color: var(--text-muted); background: rgba(255, 255, 255, 0.02); padding: 8px 12px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.04);">
+                <strong style="color: var(--text-secondary);">Plaintext Input:</strong> {{ result.input }}
+            </div>
+            {% endif %}
+
+            {% if result.salt %}
+            <div style="margin-top: 8px; font-family: var(--font-mono); font-size: 0.82rem; color: var(--status-warning); background: rgba(245, 158, 11, 0.08); padding: 8px 12px; border-radius: 4px; border: 1px solid rgba(245, 158, 11, 0.2);">
+                <strong>bcrypt Salt:</strong> {{ result.salt }}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ACTION BUTTONS (COPY & DOWNLOAD) -->
+        <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+            <button onclick="copyHash()" class="btn" style="flex: 1; background: var(--accent-emerald); color: #0a0e17; font-weight: 700;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copy Hash ke Clipboard
+            </button>
+            <button onclick="downloadHash()" class="btn" style="flex: 1; background: rgba(30, 41, 59, 0.8); border: 1px solid var(--border-subtle); color: var(--text-primary);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download Hash (.txt)
+            </button>
+        </div>
+
+        <!-- CRYPTO ADVISORY -->
+        <div style="margin-top: 20px; padding: 14px 16px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: var(--radius-sm);">
+            <p style="color: var(--text-secondary); font-size: 0.82rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <strong>Security Advisory:</strong> Hindari penggunaan MD5 dan SHA-1 untuk hashing kredensial sensitif karena rentan terhadap collision attack. Gunakan bcrypt atau Argon2 untuk kata sandi, dan SHA-256 / SHA-512 untuk verifikasi integritas file.
+            </p>
+        </div>
+
+        {% endif %}
+
+    </div>
+
+    <!-- CLIENT JAVASCRIPT -->
+    <script>
+        function toggleMode() {
+            const mode = document.getElementById('mode').value;
+            document.getElementById('text-mode').style.display = mode === 'text' ? 'block' : 'none';
+            document.getElementById('file-mode').style.display = mode === 'file' ? 'block' : 'none';
+        }
+
+        function copyHash() {
+            const hashText = `{{ result.hash if result and result.hash else '' }}`;
+            if (!hashText) return;
+
+            navigator.clipboard.writeText(hashText).then(() => {
+                alert('✅ Hash berhasil disalin ke clipboard!');
+            }).catch(() => {
+                // Fallback jika API navigator diblokir browser
+                const textarea = document.createElement('textarea');
+                textarea.value = hashText;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                alert('✅ Hash berhasil disalin ke clipboard!');
+            });
+        }
+
+        function downloadHash() {
+            const hashText = `{{ result.hash if result and result.hash else '' }}`;
+            if (!hashText) return;
+
+            const blob = new Blob([hashText], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `hash_{{ algorithm or 'output' }}.txt`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+    </script>
+</body>
+</html>

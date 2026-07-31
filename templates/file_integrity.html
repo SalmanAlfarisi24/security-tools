@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Integrity Checker // SEC-OPS</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        
+        <!-- BACK NAVIGATION -->
+        <a href="/" class="back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Kembali ke Command Center
+        </a>
+
+        <!-- HEADER -->
+        <div class="header">
+            <h1>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <path d="m9 15 2 2 4-4"/>
+                </svg>
+                File Integrity &amp; Baseline Auditor
+            </h1>
+            <p>Verifikasi checksum berkas sensitif atau buat snapshot baseline untuk memonitor perubahan, modifikasi, dan keaslian file.</p>
+        </div>
+
+        <!-- FORM INPUT -->
+        <div class="form-box">
+            <form method="POST" enctype="multipart/form-data">
+                
+                <!-- ACTION SELECTOR -->
+                <div style="margin-bottom: 16px;">
+                    <label for="action">Modus Operasi Integrity Audit</label>
+                    <select id="action" name="action" onchange="toggleAction()" style="font-family: var(--font-mono);">
+                        <option value="verify" {% if not action or action == 'verify' %}selected{% endif %}>Verify File Checksum</option>
+                        <option value="baseline" {% if action == 'baseline' %}selected{% endif %}>Create System Baseline Snapshot</option>
+                        <option value="check" {% if action == 'check' %}selected{% endif %}>Check Integrity Against Baseline</option>
+                    </select>
+                </div>
+
+                <!-- MODE 1: VERIFY FILE -->
+                <div id="verify-mode" style="display: {% if action and action != 'verify' %}none{% else %}block{% endif %}; border-top: 1px solid var(--border-subtle); padding-top: 14px; margin-top: 10px;">
+                    <div style="margin-bottom: 14px;">
+                        <label for="file">Pilih Berkas File</label>
+                        <input type="file" id="file" name="file" style="font-family: var(--font-mono); background: rgba(0,0,0,0.2); padding: 8px; border: 1px solid var(--border-subtle); border-radius: 6px; width: 100%; color: var(--text-primary);">
+                    </div>
+
+                    <div style="margin-bottom: 14px;">
+                        <label for="expected_hash">Expected Hash Value (Opsional)</label>
+                        <input type="text" id="expected_hash" name="expected_hash" placeholder="Masukkan nilai hash acuan..." value="{{ expected_hash or '' }}" style="font-family: var(--font-mono);">
+                    </div>
+
+                    <div style="margin-bottom: 16px;">
+                        <label for="algorithm">Algoritma Hashing</label>
+                        <select id="algorithm" name="algorithm" style="font-family: var(--font-mono);">
+                            <option value="md5">MD5</option>
+                            <option value="sha1">SHA-1</option>
+                            <option value="sha256" selected>SHA-256</option>
+                            <option value="sha512">SHA-512</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- MODE 2: CREATE BASELINE -->
+                <div id="baseline-mode" style="display: {% if action == 'baseline' %}block{% else %}none{% endif %}; border-top: 1px solid var(--border-subtle); padding-top: 14px; margin-top: 10px;">
+                    <div style="margin-bottom: 12px;">
+                        <label for="directory">Directory Target Path</label>
+                        <input type="text" id="directory" name="directory" placeholder="contoh: /var/www/html atau C:\app\logs" style="font-family: var(--font-mono);">
+                    </div>
+                    <p style="color: var(--text-muted); font-size: 0.78rem; font-family: var(--font-mono); margin-bottom: 16px;">
+                        ℹ️ File baseline JSON akan dibuat dan disimpan pada lokasi tersebut untuk mencatat checksum snapshot awal.
+                    </p>
+                </div>
+
+                <!-- MODE 3: CHECK INTEGRITY -->
+                <div id="check-mode" style="display: {% if action == 'check' %}block{% else %}none{% endif %}; border-top: 1px solid var(--border-subtle); padding-top: 14px; margin-top: 10px;">
+                    <div style="margin-bottom: 16px;">
+                        <label for="baseline_file">Path Berkas Baseline JSON</label>
+                        <input type="text" id="baseline_file" name="baseline_file" placeholder="contoh: /var/www/html/baseline.json" style="font-family: var(--font-mono);">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn" style="width: 100%;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    Jalankan Integrity Audit
+                </button>
+            </form>
+        </div>
+
+        <!-- ERROR ALERT -->
+        {% if error or (result is mapping and result.error) %}
+        <div class="error">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>{{ error or result.error }}</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- HASIL INTEGRITY CHECK -->
+        {% if result and 'error' not in result %}
+        
+        <!-- STATISTIK SUMMARY -->
+        <div class="stats" style="flex-wrap: wrap; gap: 15px;">
+            <span>ACTION: <strong style="font-family: var(--font-mono); color: var(--accent-cyan);">{{ (action or 'VERIFY')|upper }}</strong></span>
+            <span>STATUS: 
+                {% if result.verified is defined and result.verified %}
+                <span class="status-active">
+                    <span style="display: inline-block; width: 6px; height: 6px; background-color: var(--status-success); border-radius: 50%;"></span>
+                    CHECKSUM MATCHED
+                </span>
+                {% elif result.verified is defined and not result.verified %}
+                <span class="status-inactive">
+                    <span style="display: inline-block; width: 6px; height: 6px; background-color: var(--status-danger); border-radius: 50%;"></span>
+                    MISMATCH DETECTED
+                </span>
+                {% else %}
+                <span class="status-active">
+                    <span style="display: inline-block; width: 6px; height: 6px; background-color: var(--status-success); border-radius: 50%;"></span>
+                    EXECUTION SUCCESS
+                </span>
+                {% endif %}
+            </span>
+        </div>
+
+        <!-- 1. VERIFY FILE RESULT -->
+        {% if action == 'verify' or not action %}
+        <div style="margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 18px; border-radius: var(--radius-sm);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-cyan); font-size: 0.95rem;">[CHECKSUM VERIFICATION SUMMARY]</span>
+                <span class="status-active" style="font-size: 0.75rem;">COMPUTED</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; font-family: var(--font-mono); font-size: 0.82rem;">
+                {% if result.expected_hash %}
+                <div>
+                    <span style="color: var(--text-muted); display: block; font-size: 0.72rem; margin-bottom: 4px;">EXPECTED HASH</span>
+                    <div style="background: rgba(0, 0, 0, 0.25); padding: 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); color: var(--text-primary); word-break: break-all;">
+                        {{ result.expected_hash }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div>
+                    <span style="color: var(--text-muted); display: block; font-size: 0.72rem; margin-bottom: 4px;">ACTUAL COMPUTED HASH</span>
+                    <div style="background: rgba(0, 0, 0, 0.3); padding: 10px; border-radius: 4px; border: 1px solid {{ 'rgba(52, 211, 153, 0.3)' if result.verified else 'rgba(239, 68, 68, 0.3)' if result.expected_hash else 'rgba(56, 189, 248, 0.2)' }}; color: {{ 'var(--accent-emerald)' if result.verified else 'var(--status-danger)' if result.expected_hash else 'var(--accent-cyan)' }}; word-break: break-all; font-weight: 600;">
+                        {{ result.actual_hash or result.hash }}
+                    </div>
+                </div>
+
+                {% if result.message %}
+                <div style="background: {{ 'rgba(52, 211, 153, 0.08)' if result.verified else 'rgba(239, 68, 68, 0.08)' }}; border-left: 4px solid {{ 'var(--accent-emerald)' if result.verified else 'var(--status-danger)' }}; padding: 10px 12px; border-radius: 0 4px 4px 0; color: {{ 'var(--accent-emerald)' if result.verified else 'var(--status-danger)' }}; font-weight: 600;">
+                    {{ result.message }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 2. CREATE BASELINE RESULT -->
+        {% elif action == 'baseline' %}
+        <div style="margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 18px; border-radius: var(--radius-sm);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-emerald); font-size: 0.95rem;">[BASELINE SNAPSHOT CREATED]</span>
+                <span class="status-active" style="font-size: 0.75rem;">RECORDED</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-family: var(--font-mono);">
+                <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.03);">
+                    <span style="color: var(--text-muted); font-size: 0.7rem; display: block;">TARGET DIRECTORY</span>
+                    <span style="color: var(--accent-cyan); word-break: break-all; font-size: 0.85rem;">{{ result.directory }}</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.03);">
+                    <span style="color: var(--text-muted); font-size: 0.7rem; display: block;">FILES TRACKED</span>
+                    <span style="color: var(--accent-emerald); font-weight: 700; font-size: 1.1rem;">{{ result.files|length if result.files else 0 }} Files</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.03);">
+                    <span style="color: var(--text-muted); font-size: 0.7rem; display: block;">OUTPUT FILE</span>
+                    <span style="color: var(--status-warning); word-break: break-all; font-size: 0.82rem;">{{ result.output_file }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. CHECK INTEGRITY RESULT -->
+        {% elif action == 'check' %}
+        <div style="margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 18px; border-radius: var(--radius-sm);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-purple, #c084fc); font-size: 0.95rem;">[DIRECTORY INTEGRITY DIFFERENTIAL]</span>
+                <span class="status-active" style="font-size: 0.75rem;">AUDITED</span>
+            </div>
+
+            <!-- SUMMARY COUNTERS -->
+            {% if result.summary %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px; font-family: var(--font-mono);">
+                <div style="background: rgba(0,0,0,0.25); padding: 12px; border-radius: 4px; text-align: center; border: 1px solid rgba(255,255,255,0.03);">
+                    <span style="color: var(--text-muted); font-size: 0.7rem; display: block; margin-bottom: 2px;">CHANGED</span>
+                    <span style="font-size: 1.2rem; font-weight: 700; color: {{ 'var(--status-danger)' if result.summary.changed > 0 else 'var(--accent-emerald)' }};">{{ result.summary.changed }}</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.25); padding: 12px; border-radius: 4px; text-align: center; border: 1px solid rgba(255,255,255,0.03);">
+                    <span style="color: var(--text-muted); font-size: 0.7rem; display: block; margin-bottom: 2px;">NEW ADDED</span>
+                    <span style="font-size: 1.2rem; font-weight: 700; color: {{ 'var(--status-warning)' if result.summary.new > 0 else 'var(--accent-emerald)' }};">{{ result.summary.new }}</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.25); padding: 12px; border-radius: 4px; text-align: center; border: 1px solid rgba(255,255,255,0.03);">
+                    <span style="color: var(--text-muted); font-size: 0.7rem; display: block; margin-bottom: 2px;">DELETED</span>
+                    <span style="font-size: 1.2rem; font-weight: 700; color: {{ 'var(--status-danger)' if result.summary.deleted > 0 else 'var(--accent-emerald)' }};">{{ result.summary.deleted }}</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- CHANGED FILES LIST -->
+            {% if result.changed_files %}
+            <div style="margin-bottom: 14px;">
+                <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--status-danger); font-weight: 700; display: block; margin-bottom: 6px;">🔴 MODIFIED / ALTERED FILES:</span>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    {% for file in result.changed_files %}
+                    <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); padding: 8px 12px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-primary); word-break: break-all;">
+                        {{ file.file }}
+                        <span style="color: var(--text-muted); display: block; font-size: 0.72rem; margin-top: 2px;">
+                            Hash changed: {{ file.old_hash[:12] if file.old_hash else '' }}... → {{ file.new_hash[:12] if file.new_hash else '' }}...
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- NEW FILES LIST -->
+            {% if result.new_files %}
+            <div style="margin-bottom: 14px;">
+                <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--status-warning); font-weight: 700; display: block; margin-bottom: 6px;">🟡 NEWLY UNTRACKED FILES:</span>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    {% for file in result.new_files %}
+                    <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); padding: 8px 12px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-primary); word-break: break-all;">
+                        {{ file.file }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- DELETED FILES LIST -->
+            {% if result.deleted_files %}
+            <div style="margin-bottom: 14px;">
+                <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--status-danger); font-weight: 700; display: block; margin-bottom: 6px;">🔴 MISSING / DELETED FILES:</span>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    {% for file in result.deleted_files %}
+                    <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); padding: 8px 12px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-primary); word-break: break-all;">
+                        {{ file.file }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if not result.changed_files and not result.new_files and not result.deleted_files %}
+            <div style="text-align: center; color: var(--accent-emerald); font-family: var(--font-mono); font-size: 0.85rem; padding: 16px; background: rgba(52, 211, 153, 0.05); border-radius: 4px; border: 1px solid rgba(52, 211, 153, 0.2);">
+                ✅ Tidak ada modifikasi file yang terdeteksi. Semua berkas sesuai dengan baseline acuan.
+            </div>
+            {% endif %}
+
+        </div>
+        {% endif %}
+
+        <!-- AUDIT ADVISORY -->
+        <div style="margin-top: 20px; padding: 14px 16px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: var(--radius-sm);">
+            <p style="color: var(--text-secondary); font-size: 0.82rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <strong>Audit Tip:</strong> File Integrity Monitoring (FIM) sangat penting untuk mendeteksi serangan web shell, malware, atau akses pembaruan unauthorized pada file konfigurasi sistem.
+            </p>
+        </div>
+
+        {% endif %}
+
+    </div>
+
+    <!-- CLIENT JAVASCRIPT -->
+    <script>
+        function toggleAction() {
+            const action = document.getElementById('action').value;
+            document.getElementById('verify-mode').style.display = action === 'verify' ? 'block' : 'none';
+            document.getElementById('baseline-mode').style.display = action === 'baseline' ? 'block' : 'none';
+            document.getElementById('check-mode').style.display = action === 'check' ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>

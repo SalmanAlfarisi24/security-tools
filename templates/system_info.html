@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Information - Security Tools</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- BACK LINK -->
+        <a href="/" class="back">← Kembali ke Dashboard</a>
+
+        <!-- HEADER -->
+        <div class="header">
+            <h1>🖥️ System Information</h1>
+            <p>Informasi detail tentang sistem operasi, CPU, RAM, disk, dan jaringan.</p>
+        </div>
+
+        <!-- HASIL -->
+        {% if info %}
+        <div class="stats">
+            <span>Hostname: <strong>{{ info.os.hostname }}</strong></span>
+            <span>OS: <strong>{{ info.os.system }} {{ info.os.release }}</strong></span>
+            <span>Architecture: <strong>{{ info.os.machine }}</strong></span>
+            <span>Uptime: <strong>{{ info.uptime.uptime_human }}</strong></span>
+        </div>
+
+        <!-- ===== OS INFORMATION ===== -->
+        <div style="background: #16213e; border-radius: 8px; border: 1px solid #1a2a4a; overflow: hidden; margin-bottom: 20px;">
+            <div style="padding: 15px; background: #0d1b2a; border-bottom: 1px solid #1a2a4a;">
+                <h4 style="color: #00d2ff; margin: 0;">💻 OS Information</h4>
+            </div>
+            <div style="padding: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;">
+                <div><span style="color: #8395a7;">System:</span> {{ info.os.system }}</div>
+                <div><span style="color: #8395a7;">Release:</span> {{ info.os.release }}</div>
+                <div><span style="color: #8395a7;">Version:</span> {{ info.os.version[:50] }}{% if info.os.version|length > 50 %}...{% endif %}</div>
+                <div><span style="color: #8395a7;">Architecture:</span> {{ info.os.machine }}</div>
+                <div><span style="color: #8395a7;">Processor:</span> {{ info.os.processor or 'N/A' }}</div>
+                <div><span style="color: #8395a7;">Hostname:</span> {{ info.os.hostname }}</div>
+            </div>
+        </div>
+
+        <!-- ===== CPU INFORMATION ===== -->
+        {% if info.cpu and 'error' not in info.cpu %}
+        <div style="background: #16213e; border-radius: 8px; border: 1px solid #1a2a4a; overflow: hidden; margin-bottom: 20px;">
+            <div style="padding: 15px; background: #0d1b2a; border-bottom: 1px solid #1a2a4a;">
+                <h4 style="color: #00d2ff; margin: 0;">⚡ CPU Information</h4>
+            </div>
+            <div style="padding: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                <div><span style="color: #8395a7;">Physical Cores:</span> {{ info.cpu.physical_cores }}</div>
+                <div><span style="color: #8395a7;">Logical Cores:</span> {{ info.cpu.logical_cores }}</div>
+                <div><span style="color: #8395a7;">Usage:</span> {{ info.cpu.usage_percent }}%</div>
+                <div><span style="color: #8395a7;">Max Frequency:</span> {{ info.cpu.max_frequency }}</div>
+                <div><span style="color: #8395a7;">Current Frequency:</span> {{ info.cpu.current_frequency }}</div>
+            </div>
+            <!-- Per Core Usage -->
+            {% if info.cpu.usage_per_core %}
+            <div style="padding: 0 15px 15px 15px;">
+                <div style="color: #8395a7; font-size: 0.85rem; margin-bottom: 8px;">Per Core Usage:</div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    {% for usage in info.cpu.usage_per_core %}
+                    <div style="text-align: center; width: 40px;">
+                        <div style="width: 30px; height: 60px; background: #0d1b2a; border-radius: 4px; overflow: hidden; margin: 0 auto;">
+                            <div style="width: 100%; height: {{ usage }}%; background: 
+                                {% if usage < 40 %}#2ecc71
+                                {% elif usage < 70 %}#f39c12
+                                {% else %}#ff6b6b{% endif %}; 
+                                border-radius: 4px 4px 0 0;">
+                            </div>
+                        </div>
+                        <div style="font-size: 0.6rem; color: #8395a7; margin-top: 2px;">{{ usage }}%</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- ===== MEMORY INFORMATION ===== -->
+        {% if info.memory and 'error' not in info.memory %}
+        <div style="background: #16213e; border-radius: 8px; border: 1px solid #1a2a4a; overflow: hidden; margin-bottom: 20px;">
+            <div style="padding: 15px; background: #0d1b2a; border-bottom: 1px solid #1a2a4a;">
+                <h4 style="color: #00d2ff; margin: 0;">🧠 Memory Information</h4>
+            </div>
+            <div style="padding: 15px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px;">
+                    <div><span style="color: #8395a7;">Total:</span> {{ info.memory.total.human }}</div>
+                    <div><span style="color: #8395a7;">Used:</span> {{ info.memory.used.human }}</div>
+                    <div><span style="color: #8395a7;">Available:</span> {{ info.memory.available.human }}</div>
+                    <div><span style="color: #8395a7;">Usage:</span> {{ info.memory.percentage }}%</div>
+                </div>
+                <!-- Memory Bar -->
+                <div style="width: 100%; height: 20px; background: #0d1b2a; border-radius: 10px; overflow: hidden;">
+                    <div style="width: {{ info.memory.percentage }}%; height: 100%; background: 
+                        {% if info.memory.percentage < 60 %}#2ecc71
+                        {% elif info.memory.percentage < 80 %}#f39c12
+                        {% else %}#ff6b6b{% endif %}; 
+                        border-radius: 10px; transition: width 0.5s ease;">
+                    </div>
+                </div>
+                <!-- Swap -->
+                {% if info.memory.swap_total and info.memory.swap_total.bytes > 0 %}
+                <div style="margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                    <div><span style="color: #8395a7;">Swap Total:</span> {{ info.memory.swap_total.human }}</div>
+                    <div><span style="color: #8395a7;">Swap Used:</span> {{ info.memory.swap_used.human }}</div>
+                    <div><span style="color: #8395a7;">Swap Usage:</span> {{ info.memory.swap_percentage }}%</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ===== DISK INFORMATION ===== -->
+        {% if info.disk and info.disk is iterable and info.disk|length > 0 %}
+        <div style="background: #16213e; border-radius: 8px; border: 1px solid #1a2a4a; overflow: hidden; margin-bottom: 20px;">
+            <div style="padding: 15px; background: #0d1b2a; border-bottom: 1px solid #1a2a4a;">
+                <h4 style="color: #00d2ff; margin: 0;">💾 Disk Information</h4>
+            </div>
+            <div style="padding: 15px;">
+                {% for disk in info.disk %}
+                <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #0d1b2a;">
+                    <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                        <span style="color: #00d2ff; font-weight: 600;">{{ disk.device }}</span>
+                        <span style="color: #8395a7;">{{ disk.mountpoint }}</span>
+                        <span style="color: #8395a7;">{{ disk.fstype }}</span>
+                        <span>{{ disk.used.human }} / {{ disk.total.human }}</span>
+                        <span>{{ disk.percentage }}%</span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: #0d1b2a; border-radius: 4px; overflow: hidden; margin-top: 6px;">
+                        <div style="width: {{ disk.percentage }}%; height: 100%; background: 
+                            {% if disk.percentage < 70 %}#2ecc71
+                            {% elif disk.percentage < 85 %}#f39c12
+                            {% else %}#ff6b6b{% endif %}; 
+                            border-radius: 4px;">
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ===== NETWORK INFORMATION ===== -->
+        {% if info.network and info.network is iterable and info.network|length > 0 %}
+        <div style="background: #16213e; border-radius: 8px; border: 1px solid #1a2a4a; overflow: hidden; margin-bottom: 20px;">
+            <div style="padding: 15px; background: #0d1b2a; border-bottom: 1px solid #1a2a4a;">
+                <h4 style="color: #00d2ff; margin: 0;">🌐 Network Information</h4>
+            </div>
+            <div style="padding: 15px;">
+                {% for iface in info.network %}
+                <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #0d1b2a;">
+                    <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                        <span style="color: #00d2ff; font-weight: 600;">{{ iface.interface }}</span>
+                        {% if iface.speed %}
+                        <span style="color: #8395a7;">Speed: {{ iface.speed }} Mbps</span>
+                        {% endif %}
+                        {% if iface.mtu %}
+                        <span style="color: #8395a7;">MTU: {{ iface.mtu }}</span>
+                        {% endif %}
+                    </div>
+                    <div style="margin-top: 4px; font-family: monospace; font-size: 0.85rem; color: #8395a7;">
+                        {% for addr in iface.addresses %}
+                        <div>{{ addr.address }} ({{ addr.family }})</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ===== UPTIME ===== -->
+        <div style="padding: 15px; background: #1a2a4a; border-radius: 8px;">
+            <p style="color: #8395a7; font-size: 0.85rem; margin: 0;">
+                🕐 <strong>Boot Time:</strong> {{ info.uptime.boot_time }} &nbsp;|&nbsp; <strong>Uptime:</strong> {{ info.uptime.uptime_human }}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

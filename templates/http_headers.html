@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTTP Headers Analyzer // SEC-OPS</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        
+        <!-- BACK NAVIGATION -->
+        <a href="/" class="back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Kembali ke Command Center
+        </a>
+
+        <!-- HEADER -->
+        <div class="header">
+            <h1>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2">
+                    <polyline points="16 18 22 12 16 6"/>
+                    <polyline points="8 6 2 12 8 18"/>
+                </svg>
+                HTTP Security Headers Analyzer
+            </h1>
+            <p>Evaluasi header keamanan HTTP (CSP, HSTS, X-Frame-Options, CORS), deteksi kebocoran versi web server, serta analisis cookie & redirect.</p>
+        </div>
+
+        <!-- FORM INPUT -->
+        <div class="form-box">
+            <form method="POST">
+                <div style="margin-bottom: 16px;">
+                    <label for="url">URL Web Target</label>
+                    <input type="url" id="url" name="url" placeholder="https://example.com" value="{{ url or '' }}" required style="font-family: var(--font-mono);">
+                </div>
+
+                <button type="submit" class="btn" style="width: 100%;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="m21 21-4.3-4.3"/>
+                    </svg>
+                    Inspeksi HTTP Headers
+                </button>
+            </form>
+        </div>
+
+        <!-- ERROR ALERT -->
+        {% if error or (result is mapping and result.error) %}
+        <div class="error">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>{{ error or result.error }}</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- HASIL ANALISIS -->
+        {% if result and 'error' not in result %}
+        
+        <!-- STATISTIK SUMMARY & SCORE -->
+        <div class="stats" style="flex-wrap: wrap; gap: 15px;">
+            <span>TARGET: <strong style="font-family: var(--font-mono); color: var(--accent-cyan);">{{ url }}</strong></span>
+            <span>HTTP STATUS: <strong style="font-family: var(--font-mono); color: var(--accent-emerald);">{{ result.status_code }}</strong></span>
+            <span>SERVER: <strong style="font-family: var(--font-mono); color: var(--text-primary);">{{ result.server_info or 'Undisclosed' }}</strong></span>
+        </div>
+
+        <!-- SECURITY SCORE CARD -->
+        {% if result.security_score %}
+        <div style="margin-top: 16px; background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 18px; border-radius: var(--radius-sm);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-family: var(--font-mono); font-weight: 700; font-size: 0.85rem; color: var(--text-secondary);">HEADER SECURITY RATING</span>
+                <span style="font-family: var(--font-mono); font-weight: 700; font-size: 1.1rem; color: {{ 'var(--accent-emerald)' if result.security_score.percentage >= 70 else 'var(--status-warning)' if result.security_score.percentage >= 40 else 'var(--status-danger)' }};">
+                    {{ result.security_score.present }} / {{ result.security_score.total }} ({{ result.security_score.percentage }}%)
+                </span>
+            </div>
+            <!-- Progress Bar -->
+            <div style="width: 100%; height: 8px; background: rgba(255, 255, 255, 0.06); border-radius: 4px; overflow: hidden;">
+                <div style="width: {{ result.security_score.percentage }}%; height: 100%; background: {{ 'var(--accent-emerald)' if result.security_score.percentage >= 70 else 'var(--status-warning)' if result.security_score.percentage >= 40 else 'var(--status-danger)' }}; transition: width 0.5s ease;"></div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 1. SECURITY HEADERS AUDIT -->
+        {% if result.security_analysis %}
+        <div style="margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 18px; border-radius: var(--radius-sm);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-cyan); font-size: 0.95rem;">[SECURITY HEADERS AUDIT]</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Hardening Standards</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                {% for header, info in result.security_analysis.items() %}
+                <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); padding: 12px 14px; border-radius: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-family: var(--font-mono); font-weight: 700; color: var(--text-primary); font-size: 0.88rem;">{{ header }}</span>
+                        {% if info.present %}
+                        <span class="status-active" style="font-size: 0.75rem;">
+                            <span style="display: inline-block; width: 6px; height: 6px; background-color: var(--status-success); border-radius: 50%;"></span>
+                            PRESENT
+                        </span>
+                        {% else %}
+                        <span class="status-inactive" style="font-size: 0.75rem;">
+                            <span style="display: inline-block; width: 6px; height: 6px; background-color: var(--status-danger); border-radius: 50%;"></span>
+                            MISSING
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px;">
+                        {{ info.description }}
+                    </div>
+
+                    {% if info.present and info.value %}
+                    <div style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-cyan); background: rgba(0, 0, 0, 0.25); padding: 6px 10px; border-radius: 4px; word-break: break-all;">
+                        {{ info.value }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 2. RAW RESPONSE HEADERS -->
+        {% if result.headers %}
+        <div style="margin-top: 16px; background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 18px; border-radius: var(--radius-sm);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-purple, #c084fc); font-size: 0.9rem;">[ALL HTTP RESPONSE HEADERS]</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Total: {{ result.headers|length }} Headers</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 6px; max-height: 350px; overflow-y: auto; padding-right: 4px;">
+                {% for key, value in result.headers.items() %}
+                <div style="display: grid; grid-template-columns: minmax(180px, 1fr) 2fr; gap: 12px; font-family: var(--font-mono); font-size: 0.8rem; background: rgba(0, 0, 0, 0.2); padding: 8px 12px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.03);">
+                    <span style="color: var(--accent-cyan); font-weight: 600;">{{ key }}</span>
+                    <span style="color: var(--text-secondary); word-break: break-all;">{{ value }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 3. REDIRECT CHAIN & COOKIES -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 16px;">
+            
+            <!-- REDIRECTS -->
+            {% if result.redirects %}
+            <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 16px; border-radius: var(--radius-sm);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                    <span style="font-family: var(--font-mono); font-weight: 700; color: var(--status-warning); font-size: 0.88rem;">[HTTP REDIRECT CHAIN]</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--status-warning)" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px; font-family: var(--font-mono); font-size: 0.8rem;">
+                    {% for redirect in result.redirects %}
+                    <div style="color: var(--text-muted); background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 4px;">
+                        → {{ redirect }}
+                    </div>
+                    {% endfor %}
+                    <div style="color: var(--accent-emerald); font-weight: 600; background: rgba(52, 211, 153, 0.08); padding: 6px 10px; border-radius: 4px; border: 1px solid rgba(52, 211, 153, 0.2);">
+                        ✓ {{ result.final_url }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- COOKIES -->
+            {% if result.cookies %}
+            <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 16px; border-radius: var(--radius-sm);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                    <span style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-emerald); font-size: 0.88rem;">[SET-COOKIE HEADERS]</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-emerald)" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"/></svg>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px; font-family: var(--font-mono); font-size: 0.8rem;">
+                    {% for key, value in result.cookies.items() %}
+                    <div style="display: flex; justify-content: space-between; background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 4px;">
+                        <span style="color: var(--accent-cyan); font-weight: 600;">{{ key }}</span>
+                        <span style="color: var(--text-muted); word-break: break-all;">{{ value }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+
+        <!-- SECURITY RECOMMENDATION TIP -->
+        <div style="margin-top: 20px; padding: 14px 16px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: var(--radius-sm);">
+            <p style="color: var(--text-secondary); font-size: 0.82rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <strong>Security Tip:</strong> Terapkan header Content-Security-Policy (CSP), Strict-Transport-Security (HSTS), X-Frame-Options, serta flag SameSite/Secure pada Cookie untuk mencegah serangan Clickjacking, XSS, dan Man-in-the-Middle.
+            </p>
+        </div>
+
+        {% endif %}
+
+    </div>
+</body>
+</html>

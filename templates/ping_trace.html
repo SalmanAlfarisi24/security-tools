@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ping & Traceroute // SEC-OPS</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        
+        <!-- BACK NAVIGATION -->
+        <a href="/" class="back">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Kembali ke Command Center
+        </a>
+
+        <!-- HEADER -->
+        <div class="header">
+            <h1>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+                Ping &amp; Traceroute Diagnostic
+            </h1>
+            <p>Pengujian latensi ICMP, statistik packet loss, serta pemetaan jalur dan lompatan (hop) transmisi paket jaringan menuju target.</p>
+        </div>
+
+        <!-- FORM INPUT -->
+        <div class="form-box">
+            <form method="POST">
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 16px;">
+                    <div>
+                        <label for="hostname">Target Hostname / IP Address</label>
+                        <input type="text" id="hostname" name="hostname" placeholder="contoh: google.com atau 1.1.1.1" value="{{ hostname or '' }}" required style="font-family: var(--font-mono);">
+                    </div>
+                    <div>
+                        <label for="action">Tindakan Diagnostic</label>
+                        <select id="action" name="action" style="font-family: var(--font-mono);">
+                            <option value="ping" {% if action == 'ping' %}selected{% endif %}>Ping Only</option>
+                            <option value="trace" {% if action == 'trace' %}selected{% endif %}>Traceroute Only</option>
+                            <option value="both" {% if not action or action == 'both' %}selected{% endif %}>Both (Ping & Trace)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn" style="width: 100%;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    Jalankan Diagnostic Jaringan
+                </button>
+            </form>
+        </div>
+
+        <!-- ERROR ALERT -->
+        {% if error or (ping_result is mapping and ping_result.error) or (trace_result is mapping and trace_result.error) %}
+        <div class="error">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span>{{ error or (ping_result.error if ping_result is mapping and ping_result.error) or (trace_result.error if trace_result is mapping and trace_result.error) }}</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- HASIL DIAGNOSTIC -->
+        {% if ping_result or trace_result %}
+        
+        <!-- STATISTIK SUMMARY -->
+        <div class="stats" style="flex-wrap: wrap; gap: 15px;">
+            <span>TARGET DIAGNOSTIC: <strong style="font-family: var(--font-mono); color: var(--accent-cyan);">{{ hostname }}</strong></span>
+            <span>MODE EXECUTIVE: <strong style="font-family: var(--font-mono); color: var(--accent-emerald);">{{ (action or 'BOTH')|upper }}</strong></span>
+        </div>
+
+        <!-- 1. PING DIAGNOSTIC RESULT -->
+        {% if ping_result and 'error' not in ping_result %}
+        <div style="margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 18px; border-radius: var(--radius-sm);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-cyan); font-size: 0.95rem;">[ICMP PING METRICS]</span>
+                <span class="status-active" style="font-size: 0.75rem;">
+                    <span style="display: inline-block; width: 6px; height: 6px; background-color: var(--status-success); border-radius: 50%;"></span>
+                    HOST RESPONSIVE
+                </span>
+            </div>
+
+            <!-- PACKET STATS GRID -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px; font-family: var(--font-mono);">
+                <div style="background: rgba(0,0,0,0.25); padding: 12px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.03); text-align: center;">
+                    <span style="color: var(--text-muted); font-size: 0.7rem; display: block; margin-bottom: 4px;">SENT</span>
+                    <span style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary);">{{ ping_result.packets_sent }}</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.25); padding: 12px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.03); text-align: center;">
+                    <span style="color: var(--text-muted); font-size: 0.7rem; display: block; margin-bottom: 4px;">RECEIVED</span>
+                    <span style="font-size: 1.2rem; font-weight: 700; color: var(--accent-emerald);">{{ ping_result.packets_received }}</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.25); padding: 12px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.03); text-align: center;">
+                    <span style="color: var(--text-muted); font-size: 0.7rem; display: block; margin-bottom: 4px;">LOST</span>
+                    <span style="font-size: 1.2rem; font-weight: 700; color: {{ 'var(--accent-emerald)' if ping_result.packets_lost == 0 else 'var(--status-danger)' }};">{{ ping_result.packets_lost }}</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.25); padding: 12px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.03); text-align: center;">
+                    <span style="color: var(--text-muted); font-size: 0.7rem; display: block; margin-bottom: 4px;">LOSS RATE</span>
+                    <span style="font-size: 1.2rem; font-weight: 700; color: {{ 'var(--accent-emerald)' if ping_result.loss_percentage == 0 else 'var(--status-danger)' }};">{{ ping_result.loss_percentage }}%</span>
+                </div>
+            </div>
+
+            <!-- LATENCY MIN / AVG / MAX -->
+            {% if ping_result.avg_time is not none %}
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-family: var(--font-mono); margin-bottom: 14px;">
+                <div style="background: rgba(56, 189, 248, 0.05); padding: 10px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.15); text-align: center;">
+                    <span style="color: var(--text-muted); font-size: 0.7rem; display: block;">MIN LATENCY</span>
+                    <span style="color: var(--accent-cyan); font-weight: 700; font-size: 1rem;">{{ ping_result.min_time }}ms</span>
+                </div>
+                <div style="background: rgba(56, 189, 248, 0.08); padding: 10px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.25); text-align: center;">
+                    <span style="color: var(--text-muted); font-size: 0.7rem; display: block;">AVG LATENCY</span>
+                    <span style="color: var(--accent-cyan); font-weight: 700; font-size: 1.05rem;">{{ ping_result.avg_time }}ms</span>
+                </div>
+                <div style="background: rgba(56, 189, 248, 0.05); padding: 10px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.15); text-align: center;">
+                    <span style="color: var(--text-muted); font-size: 0.7rem; display: block;">MAX LATENCY</span>
+                    <span style="color: var(--accent-cyan); font-weight: 700; font-size: 1rem;">{{ ping_result.max_time }}ms</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- RAW OUTPUT COLLAPSIBLE -->
+            {% if ping_result.output %}
+            <details style="margin-top: 10px;">
+                <summary style="color: var(--text-muted); cursor: pointer; font-size: 0.8rem; font-family: var(--font-mono); user-select: none;">
+                    ▶ Tampilkan Terminal Raw Output (Ping)
+                </summary>
+                <pre style="background: rgba(0, 0, 0, 0.4); padding: 12px; border-radius: 6px; color: var(--accent-cyan); font-family: var(--font-mono); font-size: 0.78rem; overflow-x: auto; margin-top: 8px; white-space: pre-wrap; border: 1px solid rgba(255,255,255,0.05);">{{ ping_result.output }}</pre>
+            </details>
+            {% endif %}
+
+        </div>
+        {% endif %}
+
+        <!-- 2. TRACEROUTE DIAGNOSTIC RESULT -->
+        {% if trace_result and 'error' not in trace_result %}
+        <div style="margin-top: 20px; background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 18px; border-radius: var(--radius-sm);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-purple, #c084fc); font-size: 0.95rem;">[TRACEROUTE ROUTE HOPS]</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Total Hops: {{ trace_result.hops|length if trace_result.hops else 0 }}</span>
+            </div>
+
+            {% if trace_result.hops %}
+            <div style="display: flex; flex-direction: column; gap: 6px; font-family: var(--font-mono); font-size: 0.82rem; max-height: 400px; overflow-y: auto; padding-right: 4px;">
+                {% for hop in trace_result.hops %}
+                <div style="display: grid; grid-template-columns: 50px 1fr 100px; gap: 12px; align-items: center; background: rgba(0, 0, 0, 0.2); padding: 8px 12px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.03);">
+                    <span style="color: var(--text-muted); font-weight: 700;">#{{ hop.hop }}</span>
+                    <span style="color: var(--accent-cyan); word-break: break-all;">{{ hop.ip }}</span>
+                    <span style="color: {{ 'var(--accent-emerald)' if hop.avg_time else 'var(--text-muted)' }}; text-align: right; font-weight: 600;">
+                        {% if hop.avg_time %}
+                        {{ hop.avg_time|round(2) }} ms
+                        {% else %}
+                        * (Timeout)
+                        {% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px;">
+                Tidak ada data lompatan hop yang terdeteksi.
+            </div>
+            {% endif %}
+
+            <!-- RAW OUTPUT COLLAPSIBLE -->
+            {% if trace_result.output %}
+            <details style="margin-top: 14px;">
+                <summary style="color: var(--text-muted); cursor: pointer; font-size: 0.8rem; font-family: var(--font-mono); user-select: none;">
+                    ▶ Tampilkan Terminal Raw Output (Traceroute)
+                </summary>
+                <pre style="background: rgba(0, 0, 0, 0.4); padding: 12px; border-radius: 6px; color: var(--accent-purple, #c084fc); font-family: var(--font-mono); font-size: 0.78rem; overflow-x: auto; margin-top: 8px; white-space: pre-wrap; border: 1px solid rgba(255,255,255,0.05);">{{ trace_result.output }}</pre>
+            </details>
+            {% endif %}
+
+        </div>
+        {% endif %}
+
+        <!-- DIAGNOSTIC ADVISORY -->
+        <div style="margin-top: 20px; padding: 14px 16px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: var(--radius-sm);">
+            <p style="color: var(--text-secondary); font-size: 0.82rem; margin: 0; display: flex; align-items: center; gap: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <strong>Diagnostic Tip:</strong> Ping digunakan untuk mengukur responsivitas dan kestabilan koneksi secara langsung, sedangkan Traceroute berguna untuk mengisolasi lokasi bottleneck atau loss jaringan pada router perantara.
+            </p>
+        </div>
+
+        {% endif %}
+
+    </div>
+</body>
+</html>
